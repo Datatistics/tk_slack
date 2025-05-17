@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "tk_slack"
+  site-url: "https://Datatistics.github.io/tk_slack"
+  description: "Slack Message Engine for TriggerKit"
+  repo-branch: main
+  repo-url: "https://github.com/Datatistics/tk_slack"

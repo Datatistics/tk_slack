@@ -1,0 +1,4 @@
+fastcore
+pandas
+nbdev
+jupyterlab
