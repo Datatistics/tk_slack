@@ -1,3 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://Datatistics.github.io/tk_slack/index.html</loc>
+    <lastmod>2025-05-17T00:58:00.952Z</lastmod>
+  </url>
+  <url>
+    <loc>https://Datatistics.github.io/tk_slack/API/interection_builder.html</loc>
+    <lastmod>2025-05-17T00:58:01.200Z</lastmod>
+  </url>
+  <url>
+    <loc>https://Datatistics.github.io/tk_slack/API/template_engine.html</loc>
+    <lastmod>2025-05-17T00:58:01.145Z</lastmod>
+  </url>
+  <url>
+    <loc>https://Datatistics.github.io/tk_slack/API/block_builder.html</loc>
+    <lastmod>2025-05-17T00:58:01.122Z</lastmod>
+  </url>
+  <url>
+    <loc>https://Datatistics.github.io/tk_slack/API/core.html</loc>
+    <lastmod>2025-05-17T00:58:01.177Z</lastmod>
+  </url>
+  <url>
+    <loc>https://Datatistics.github.io/tk_slack/API/message_templates.html</loc>
+    <lastmod>2025-05-17T00:58:01.169Z</lastmod>
+  </url>
 </urlset>
