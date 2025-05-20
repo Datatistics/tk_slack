@@ -14,6 +14,7 @@ from .block_builder import BlockBuilder
 from .interaction_builder import InteractionBuilder
 import pandas as pd
 import json
+import numpy as np
 
 # %% ../nbs/API/04_template_engine.ipynb 4
 class TemplateEngine:
@@ -25,7 +26,71 @@ class TemplateEngine:
 
 # %% ../nbs/API/04_template_engine.ipynb 5
 @patch_to(TemplateEngine,cls_method=True)
-def _parse_row_config(self, row: pd.Series, view_config: Dict[str, Any], 
+def _extract_interactive_options(self, row: pd.Series, col_map: Dict[str, str]) -> Tuple[List[str], List[str]]:
+    """Extract interactive option names and values from a row.
+    
+    Args:
+        row: DataFrame row
+        col_map: Column name mapping (uppercase to original case)
+        
+    Returns:
+        Tuple of (option_names, option_values)
+    """
+    option_names = []
+    option_values = []
+    
+    # Check for option_name in case-insensitive manner
+    option_name_col = col_map.get('OPTION_NAME')
+    option_value_col = col_map.get('OPTION_VALUE')
+    
+    if option_name_col:
+        # Extract values
+        name_value = row[option_name_col] if option_name_col in row else None
+        
+        # Check if name_value is valid (not all NAs)
+        name_is_valid = False
+        if isinstance(name_value, (list, np.ndarray)) or (hasattr(name_value, '__iter__') and not isinstance(name_value, str)):
+            # For collections, check if any element is not NA
+            name_is_valid = any(pd.notna(v) for v in name_value) if name_value is not None else False
+        else:
+            # For scalar values, check directly
+            name_is_valid = pd.notna(name_value)
+        
+        if name_is_valid:
+            option_names = name_value
+            
+            # Get option values if column exists
+            if option_value_col:
+                value_value = row[option_value_col] if option_value_col in row else None
+                
+                # Check if value_value is valid (not all NAs)
+                value_is_valid = False
+                if isinstance(value_value, (list, np.ndarray)) or (hasattr(value_value, '__iter__') and not isinstance(value_value, str)):
+                    # For collections, check if any element is not NA
+                    value_is_valid = any(pd.notna(v) for v in value_value) if value_value is not None else False
+                else:
+                    # For scalar values, check directly
+                    value_is_valid = pd.notna(value_value)
+                
+                option_values = value_value if value_is_valid else ''
+            else:
+                option_values = ''
+            
+            # Convert to lists if they're not already
+            if not isinstance(option_names, list):
+                option_names = [str(option_names)]
+            
+            if not isinstance(option_values, list):
+                option_values = [str(option_values)] * len(option_names)
+            elif len(option_values) < len(option_names):
+                # Extend option_values if it's shorter than option_names
+                option_values = option_values + [str(option_values[-1])] * (len(option_names) - len(option_values))
+                
+    return option_names, option_values
+
+# %% ../nbs/API/04_template_engine.ipynb 6
+@patch_to(TemplateEngine,cls_method=True)
+def _parse_row_config(self,row: pd.Series, view_config: Dict[str, Any], 
                          col_map: Dict[str, str]) -> Dict[str, Any]:
         """Parse row-specific configuration, falling back to view config.
         
@@ -53,163 +118,231 @@ def _parse_row_config(self, row: pd.Series, view_config: Dict[str, Any],
         
         return config
 
-# %% ../nbs/API/04_template_engine.ipynb 6
-@patch_to(TemplateEngine,cls_method=True)
-def _extract_meta_data_fields(self, row: pd.Series, df_columns: List[str], 
-                                 config: Dict[str, Any]) -> List[Tuple[str, str]]:
-        """Extract metadata fields from a row.
-        
-        Args:
-            row: DataFrame row
-            df_columns: DataFrame column names
-            config: Configuration dictionary
-            
-        Returns:
-            List of (label, value) tuples for metadata
-        """
-        # Get metadata columns from config and columns ending with _meta
-        meta_data_cols = config.get('meta_data_cols', [])
-        meta_data_cols += [col for col in df_columns if col.lower().endswith('_meta')]
-        
-        meta_items = []
-        for col in meta_data_cols:
-            if col in df_columns and pd.notna(row[col]):
-                # Format the field name and value
-                field_name = col.lower().replace('_meta', '').replace('_', ' ').title()
-                field_value = ValueFormatter.format_value(row[col])
-                if field_value:
-                    meta_items.append((field_name, field_value))
-                    
-        return meta_items
-
 # %% ../nbs/API/04_template_engine.ipynb 7
 @patch_to(TemplateEngine,cls_method=True)
-def _extract_detail_fields(self, row: pd.Series, df_columns: List[str], 
-                              config: Dict[str, Any]) -> List[Tuple[str, str]]:
-        """Extract detail fields from a row.
+def _extract_meta_data_fields(self,row: pd.Series, df_columns: List[str], 
+                                 config: Dict[str, Any]) -> List[Tuple[str, str]]:
+    """Extract metadata fields from a row.
+    
+    Args:
+        row: DataFrame row
+        df_columns: DataFrame column names
+        config: Configuration dictionary
         
-        Args:
-            row: DataFrame row
-            df_columns: DataFrame column names
-            config: Configuration dictionary
+    Returns:
+        List of (label, value) tuples for metadata
+    """
+    # Get metadata columns from config and columns ending with _meta
+    meta_data_cols = config.get('meta_data_cols', [])
+    meta_data_cols += [col for col in df_columns if col.lower().endswith('_meta')]
+    
+    meta_items = []
+    for col in meta_data_cols:
+        if col in df_columns:
+            # Check if the value is not NA - handle both scalar and array-like values
+            value = row[col]
             
-        Returns:
-            List of (label, value) tuples for detail fields
-        """
-        # Get detail columns from config or use default
-        detail_cols = config.get('detail_cols', [])
-        if not detail_cols:
-            # If not specified, use utility to get default detail columns
-            detail_cols = ColumnUtils.get_detail_columns(df_columns)
-        
-        field_items = []
-        for col in detail_cols:
-            if col in df_columns and pd.notna(row[col]):
-                # Format field name and value for display
-                field_name = col.lower().replace('_', ' ').title()
-                field_value = ValueFormatter.format_value(row[col])
+            # For list-like values in Series, we need special handling
+            if isinstance(value, (list, np.ndarray)) or (hasattr(value, '__iter__') and not isinstance(value, str)):
+                is_valid = any(pd.notna(v) for v in value) if value is not None else False
+            else:
+                is_valid = pd.notna(value)
+                
+            if is_valid:
+                # Format the field name and value
+                field_name = col.lower().replace('_meta', '').replace('_', ' ').title()
+                field_value = ValueFormatter.format_value(value)
                 if field_value:
-                    field_items.append((field_name, field_value))
-                    
-        return field_items
+                    meta_items.append((field_name, field_value))
+                
+    return meta_items
 
 # %% ../nbs/API/04_template_engine.ipynb 8
 @patch_to(TemplateEngine,cls_method=True)
-def _extract_interactive_options(self, row: pd.Series, col_map: Dict[str, str]) -> Tuple[List[str], List[str]]:
-        """Extract interactive option names and values from a row.
+def _extract_detail_fields(self, row: pd.Series, df_columns: List[str], 
+                        config: Dict[str, Any]) -> List[Tuple[str, str]]:
+    """Extract detail fields from a row.
+    
+    Args:
+        row: DataFrame row
+        df_columns: DataFrame column names
+        config: Configuration dictionary
         
-        Args:
-            row: DataFrame row
-            col_map: Column name mapping (uppercase to original case)
+    Returns:
+        List of (label, value) tuples for detail fields
+    """
+    # Get detail columns from config or use default
+    detail_cols = config.get('detail_cols', [])
+    if not detail_cols:
+        # If not specified, use utility to get default detail columns
+        detail_cols = ColumnUtils.get_detail_columns(df_columns)
+    
+    field_items = []
+    for col in detail_cols:
+        # Split the condition to avoid the ambiguous truth value error
+        if col in df_columns:
+            value = row[col]
             
-        Returns:
-            Tuple of (option_names, option_values)
-        """
-        option_names = []
-        option_values = []
-        
-        # Check for option_name in case-insensitive manner
-        option_name_col = col_map.get('OPTION_NAME')
-        option_value_col = col_map.get('OPTION_VALUE')
-        
-        if option_name_col and pd.notna(row[option_name_col]):
-            option_names = row[option_name_col]
-            option_values = row[option_value_col] if option_value_col and pd.notna(row[option_value_col]) else ''
+            # Check if value is not NA, handling different types appropriately
+            is_not_na = False
+            if isinstance(value, (list, np.ndarray)) or (hasattr(value, '__iter__') and not isinstance(value, str)):
+                # For collections, check if any value is not NA
+                is_not_na = any(pd.notna(v) for v in value) if value is not None else False
+            else:
+                # For scalar values, check directly
+                is_not_na = pd.notna(value)
             
-            # Convert to lists if they're not already
-            if not isinstance(option_names, list):
-                option_names = [str(option_names)]
-            
-            if not isinstance(option_values, list):
-                option_values = [str(option_values)] * len(option_names)
-            elif len(option_values) < len(option_names):
-                # Extend option_values if it's shorter than option_names
-                option_values = option_values + [str(option_values[-1])] * (len(option_names) - len(option_values))
+            if is_not_na:
+                # Format field name and value for display
+                field_name = col.lower().replace('_', ' ').title()
+                field_value = ValueFormatter.format_value(value)
+                if field_value:
+                    field_items.append((field_name, field_value))
                 
-        return option_names, option_values
+    return field_items
 
 # %% ../nbs/API/04_template_engine.ipynb 9
 @patch_to(TemplateEngine,cls_method=True)
+def _extract_response_metadata(self,row: pd.Series, col_map: Dict[str, str],
+                                config: Dict[str, Any]) -> Optional[str]:
+    """Extract metadata for action responses.
+    
+    Args:
+        row: DataFrame row
+        col_map: Column name mapping
+        config: Configuration dictionary
+        
+    Returns:
+        Metadata string for action_id or None
+    """
+    # Check for response_meta column
+    response_meta = None
+    
+    if 'RESPONSE_META' in col_map and pd.notna(row[col_map['RESPONSE_META']]):
+        response_meta = str(row[col_map['RESPONSE_META']])
+    elif 'response_meta' in config:
+        response_meta = str(config['response_meta'])
+        
+    # Add response config if specified
+    response_config = {}
+    
+    # Check for response type (ephemeral/in_channel)
+    if 'RESPONSE_TYPE' in col_map and pd.notna(row[col_map['RESPONSE_TYPE']]):
+        response_config['response_type'] = str(row[col_map['RESPONSE_TYPE']])
+    elif 'response_type' in config:
+        response_config['response_type'] = str(config['response_type'])
+        
+    # Check for response message template
+    if 'RESPONSE_MESSAGE' in col_map and pd.notna(row[col_map['RESPONSE_MESSAGE']]):
+        response_config['response_message'] = str(row[col_map['RESPONSE_MESSAGE']])
+    elif 'response_message' in config:
+        response_config['response_message'] = str(config['response_message'])
+        
+    # Check if should replace original message
+    if 'REPLACE_ORIGINAL' in col_map and pd.notna(row[col_map['REPLACE_ORIGINAL']]):
+        replace_val = row[col_map['REPLACE_ORIGINAL']]
+        response_config['replace_original'] = 'true' if replace_val else 'false'
+    elif 'replace_original' in config:
+        response_config['replace_original'] = str(config['replace_original']).lower()
+        
+    # If we have response config, encode it
+    if response_config:
+        # If we already have metadata, combine with response config
+        if response_meta:
+            # Convert existing metadata to dict if possible
+            try:
+                meta_dict = json.loads(response_meta) if isinstance(response_meta, str) else response_meta
+                if isinstance(meta_dict, dict):
+                    meta_dict.update(response_config)
+                    return json.dumps(meta_dict)
+            except (json.JSONDecodeError, TypeError):
+                # If not valid JSON, use as is and append response config
+                combined = f"{response_meta}|{json.dumps(response_config)}"
+                return combined
+        else:
+            # Just use response config as metadata
+            return json.dumps(response_config)
+            
+    return response_meta
+
+
+# %% ../nbs/API/04_template_engine.ipynb 10
+@patch_to(TemplateEngine,cls_method=True)
 def build_individual_message_blocks(cls, row: pd.Series, df_columns: List[str], 
-                                       col_map: Dict[str, str], config: Dict[str, Any],
-                                       view: str) -> List[Dict[str, Any]]:
-        """Build message blocks for a single row.
+                                    col_map: Dict[str, str], config: Dict[str, Any],
+                                    view_info: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Build message blocks for a single row.
+    
+    Args:
+        row: DataFrame row
+        df_columns: DataFrame column names
+        col_map: Column name mapping
+        config: Configuration dictionary
+        view_info: View information for structured metadata
         
-        Args:
-            row: DataFrame row
-            df_columns: DataFrame column names
-            col_map: Column name mapping
-            config: Configuration dictionary
-            view: View name for action IDs
-            
-        Returns:
-            List of Slack blocks for the message
-        """
-        # Initialize blocks for this message
-        payload_blocks = []
-        
-        # 1. Title Section - Use SlackFormatter for title with proper linking
-        section_text = SlackFormatter.format_section_name(row, df_columns)
-        payload_blocks.append(BlockBuilder.create_section_block(section_text))
-        
-        # 2. Description Text - Look for TEXT or DESCRIPTION column
-        for text_col in ['TEXT', 'DESCRIPTION']:
-            if text_col in col_map and pd.notna(row[col_map[text_col]]):
-                payload_blocks.append(
-                    BlockBuilder.create_section_block(str(row[col_map[text_col]]))
-                )
-                break
-        
-        # 3. Metadata - Get and format metadata fields
-        meta_items = cls._extract_meta_data_fields(row, df_columns, config)
-        if meta_items:
-            meta_block = BlockBuilder.create_metadata_context(meta_items)
-            if meta_block:
-                payload_blocks.append(meta_block)
-        
-        # 4. Detail Fields - Get and format detail fields
-        field_items = cls._extract_detail_fields(row, df_columns, config)
-        if field_items:
-            field_blocks = BlockBuilder.create_fields_section(field_items)
-            payload_blocks.extend(field_blocks)
-        
-        # 5. Interactive Elements
-        option_names, option_values = cls._extract_interactive_options(row, col_map)
-        
-        if option_names:
-            action_type = config.get('action_type', None)
-            action_id_base = f"{view}_{action_type if action_type else 'action'}"
-            
-            elements = InteractionBuilder.detect_and_create_interactive_elements(
-                option_names, option_values, action_id_base, action_type
+    Returns:
+        List of Slack blocks for the message
+    """
+    # Initialize blocks for this message
+    payload_blocks = []
+    
+    # 1. Title Section - Use SlackFormatter for title with proper linking
+    section_text = SlackFormatter.format_section_name(row, df_columns)
+    payload_blocks.append(BlockBuilder.create_section_block(section_text))
+    
+    # 2. Description Text - Look for TEXT or DESCRIPTION column
+    for text_col in ['TEXT', 'DESCRIPTION']:
+        if text_col in col_map and pd.notna(row[col_map[text_col]]):
+            payload_blocks.append(
+                BlockBuilder.create_section_block(str(row[col_map[text_col]]))
             )
-            
-            if elements:
-                payload_blocks.append(
-                    InteractionBuilder.create_actions_block(elements)
-                )
+            break
+    
+    # 3. Metadata - Get and format metadata fields
+    meta_items = cls._extract_meta_data_fields(row, df_columns, config)
+    
+    # Note: We don't need to add view information to visible metadata anymore
+    # since we're using Slack's metadata field for that information now
+    
+    if meta_items:
+        meta_block = BlockBuilder.create_metadata_context(meta_items)
+        if meta_block:
+            payload_blocks.append(meta_block)
+    
+    # 4. Detail Fields - Get and format detail fields
+    field_items = cls._extract_detail_fields(row, df_columns, config)
+    if field_items:
+        field_blocks = BlockBuilder.create_fields_section(field_items)
+        payload_blocks.extend(field_blocks)
+    
+    # 5. Interactive Elements
+    option_names, option_values = cls._extract_interactive_options(row, col_map)
+    
+    if option_names:
+        action_type = config.get('action_type', None)
         
-        # 6. Add a divider at the end
-        payload_blocks.append(BlockBuilder.create_divider())
+        # Extract response config for interactive elements
+        response_config = {
+            "response_type": config.get("response_type", "ephemeral"),
+            "response_message": config.get("response_message", "Thank you for your response!"),
+            "replace_original": config.get("replace_original", False)
+        }
         
-        return payload_blocks
+        # We'll no longer need to pass metadata to interactive elements
+        # since we're using Slack's metadata field - pass basic info for debugging only
+        debug_metadata = {"source": "data_alert"}
+        
+        # Use the view name for action_id base
+        elements = InteractionBuilder.detect_and_create_interactive_elements(
+            option_names, option_values, action_type, debug_metadata
+        )
+        
+        if elements:
+            payload_blocks.append(
+                InteractionBuilder.create_actions_block(elements)
+            )
+    
+    # 6. Add a divider at the end
+    payload_blocks.append(BlockBuilder.create_divider())
+    
+    return payload_blocks

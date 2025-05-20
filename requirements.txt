@@ -1,3 +1,5 @@
 fastcore
 pandas
 nbdev
+snowflake-connector-python
+snowflake-connector-python[pandas]

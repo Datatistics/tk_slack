@@ -10,6 +10,7 @@ from typing import List, Tuple, Dict, Any, Callable, Optional
 import os
 from datetime import datetime
 import pandas as pd
+import numpy as np
 
 # %% ../nbs/API/01_core.ipynb 4
 class DebugLogger:
@@ -86,43 +87,42 @@ class ValueFormatter:
         Returns:
             Formatted string representation of the value
         """
-        #DebugLogger.log(f'val: {val}')
-        
-        # Handle null values
-        if pd.isnull(val):
-            #DebugLogger.log(f'Formatted: {str(val)}')
+        # Handle null values - with special handling for arrays/collections
+        if isinstance(val, (list, np.ndarray, pd.Series)) or (hasattr(val, '__iter__') and not isinstance(val, (str, dict))):
+            # For collections, check if all values are null
+            if len(val) == 0 or pd.isnull(val).all():
+                return ""
+            # Continue to the collection handling below
+        elif pd.isnull(val):
+            # For scalar values, check directly
             return ""
             
         # Handle datetime objects
         if isinstance(val, (datetime, pd.Timestamp)):
             formatted = val.strftime('%b %d, %Y')
-            #DebugLogger.log(f'Formatted: {formatted}')
             return formatted
             
         # Handle numeric values
         if isinstance(val, float):
             formatted = f"{val:.2f}"
-            #DebugLogger.log(f'Formatted: {formatted}')
             return formatted
             
         if isinstance(val, int):
             formatted = str(val)
-            #DebugLogger.log(f'Formatted: {formatted}')
             return formatted
             
         # Handle boolean values
         if isinstance(val, bool):
             formatted = "Yes" if val else "No"
-            #DebugLogger.log(f'Formatted: {formatted}')
             return formatted
             
         # Handle collections
         if isinstance(val, (list, tuple)):
-            return ", ".join(str(v) for v in val)
+            # Filter out any null values before joining
+            return ", ".join(str(v) for v in val if not pd.isnull(v))
             
         if isinstance(val, dict):
             formatted = ", ".join(f"{k}: {v}" for k, v in val.items())
-            #DebugLogger.log(f'Formatted: {formatted}')
             return formatted
             
         # Try to parse strings as dates, fallback to string
@@ -133,7 +133,6 @@ class ValueFormatter:
                     DebugLogger.log(f'val: {val}')
                     if parsed_date.year >= 2023:
                         formatted = parsed_date.strftime('%b %d, %Y')
-                        #DebugLogger.log(f"Year greater than 2023: {formatted}")
                         return formatted
                     else:
                         DebugLogger.log(f"Year less than 2023: {parsed_date.year}")
@@ -142,7 +141,6 @@ class ValueFormatter:
         
         # Default string formatting
         formatted = str(val)
-        #DebugLogger.log(f'Formatted: {formatted}')
         return formatted
 
 
@@ -242,162 +240,6 @@ class SlackFormatter:
         return f"*{title}*"
 
 # %% ../nbs/API/01_core.ipynb 8
-class SlackMessenger:
-    """Handles creation and sending of Slack messages in various templates."""
-    
-    @staticmethod
-    def process_section_row(section_text: str, detail_text: str) -> Dict[str, Any]:
-        """Create Slack message section block.
-        
-        Args:
-            section_text: Main section text with markdown formatting
-            detail_text: Detailed information with markdown formatting
-            
-        Returns:
-            Slack block kit section object
-        """
-        return {
-            "type": "section",
-            "fields": [
-                {"type": "mrkdwn", "text": section_text},
-                {"type": "mrkdwn", "text": detail_text}
-            ]
-        }
-        
-    @staticmethod
-    def create_header_block(title: str) -> Dict[str, Any]:
-        """Create a header block for Slack messages.
-        
-        Args:
-            title: The title text for the header
-            
-        Returns:
-            Slack block kit header object
-        """
-        return {
-            "type": "header",
-            "text": {"type": "plain_text", "text": title, "emoji": True}
-        }
-    
-    @staticmethod
-    def get_metadata(row: pd.Series, df_columns: List[str]) -> Dict[str, Any]:
-        """Extract metadata from row for logging.
-        
-        Args:
-            row: DataFrame row
-            df_columns: List of column names
-            
-        Returns:
-            Dictionary of column values
-        """
-        # Fixed the incorrect implementation
-        return {column: row.get(column) for column in df_columns}
-    
-    @staticmethod
-    def _send_alert_to_slack(
-        send_to_slack_func: callable,
-        channel_id: str,
-        message_text: str,
-        payload_blocks: List[Dict[str, Any]],
-        view: str
-    ) -> Tuple[bool, Optional[Dict[str, Any]]]:
-        """Send alert to Slack and handle response.
-        
-        Args:
-            send_to_slack_func: Function to send messages to Slack
-            channel_id: Slack channel ID
-            message_text: Main message text
-            payload_blocks: Slack blocks to send
-            view: View name for logging
-            
-        Returns:
-            Tuple of (success_flag, error_details)
-        """
-        try:
-            response = send_to_slack_func(channel_id, message_text, payload_blocks=payload_blocks)
-            DebugLogger.log(f'Response: {response.text if hasattr(response, "text") else response}')
-            
-            # Check response
-            if hasattr(response, 'status_code') and response.status_code == 200:
-                # Handle JSON response
-                if hasattr(response, 'json'):
-                    try:
-                        json_response = response.json()
-                        if json_response.get('ok'):
-                            print(f'   Alert sent for {view}')
-                            return True, None
-                    except Exception as json_err:
-                        print(f'   Error parsing JSON response for {view}: {json_err}')
-                        return False, {'slack_api_error': f'JSON parse error: {str(json_err)}'}
-                else:
-                    # Simple success response
-                    print(f'   Alert sent for {view}')
-                    return True, None
-            
-            # Handle error response
-            error_text = response.text if hasattr(response, 'text') else str(response)
-            print(f'   Error sending alert for {view}: {error_text}')
-            return False, {'slack_api_error': error_text}
-            
-        except Exception as e:
-            print(f'   Error sending alert for {view}: {e}')
-            return False, {'slack_api_error': str(e)}
-    
-    @staticmethod
-    def _format_data_for_logging(df: pd.DataFrame) -> List[Dict[str, Any]]:
-        """Format DataFrame data for logging.
-        
-        Args:
-            df: DataFrame with alert data
-            
-        Returns:
-            List of dictionaries with formatted values
-        """
-        return [{
-            key: ValueFormatter.format_value(value) 
-            for key, value in row.items()
-        } for row in df.to_dict('records')]
-    
-    @staticmethod
-    def _log_alert(
-        log_alert_history_func: callable,
-        view: str,
-        view_group: str,
-        channel_id: str,
-        success: bool,
-        error_details: Optional[Dict[str, Any]],
-        formatted_data: List[Dict[str, Any]],
-        message_text: str
-    ) -> None:
-        """Log alert history.
-        
-        Args:
-            log_alert_history_func: Function to log alert history
-            view: View name
-            view_group: Group name for the view
-            channel_id: Slack channel ID
-            success: Whether the alert was sent successfully
-            error_details: Details of any error
-            formatted_data: Formatted data for logging
-            message_text: Main message text
-        """
-        try:
-            log_alert_history_func(
-                related_view=view,
-                team=view_group,
-                channel=channel_id,
-                rows_grouped=True,
-                row_num=None,
-                data=formatted_data,
-                was_success=success,
-                error_details=error_details,
-                message_details={'format': 'f1', 'message_text': message_text}
-            )
-        except Exception as e:
-            print(f"Error logging alert history: {e}")
-
-
-# %% ../nbs/API/01_core.ipynb 9
 class SlackMessenger:
     """Handles creation and sending of Slack messages in various templates."""
     
