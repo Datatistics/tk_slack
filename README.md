@@ -56,12 +56,49 @@ find package manager specific guidelines on
 [conda](https://anaconda.org/Datatistics/tk_slack) and
 [pypi](https://pypi.org/project/tk_slack/) respectively.
 
-## How to use
-
-Fill me in please! Don’t forget code examples:
-
-``` python
-1+1
+``` mermaid
+---
+config:
+  theme: redux
+  layout: dagre
+  look: handDrawn
+---
+flowchart TD
+ subgraph Core_Components["Core_Components"]
+        MessageTemplates["MessageTemplates<br>Creates formatted messages"]
+        BlockBuilder["BlockBuilder<br>Builds Slack Block Kit"]
+        InteractionBuilder["InteractionBuilder<br>Creates buttons, selects, etc."]
+        ActionIdManager["ActionIdManager<br>Generates &amp; parses action IDs"]
+        MetadataHandler["MetadataHandler<br>Attaches/reads hidden metadata"]
+        ActionHandler["ActionHandler<br>Processes user actions"]
+        TemplateEngine["TemplateEngine<br>Transforms data to message blocks"]
+        SnowflakeConnector["SnowflakeConnector<br>Handles DB ops"]
+  end
+ subgraph Message_Creation_Flow["Message_Creation_Flow"]
+        DataInput["Data Input (DataFrame)"]
+        Configuration["Apply Configuration"]
+        BlockBuilding["Block Building"]
+        MetadataAddition["Metadata Addition"]
+        MessageSending["Send Message to Slack"]
+  end
+ subgraph User_Interaction_Flow["User_Interaction_Flow"]
+        UserAction["User Clicks Element"]
+        ActionDetection["Universal Handler Captures Action"]
+        MetadataExtraction["Extract Metadata"]
+        ActionProcessing["Process Action Logic"]
+        SnowflakeStorage["Store in Snowflake"]
+        Response["Send Slack Response"]
+  end
+    DataInput --> Configuration
+    Configuration --> BlockBuilding
+    BlockBuilding -- Uses --> TemplateEngine
+    TemplateEngine --> MessageTemplates & BlockBuilder & InteractionBuilder & MetadataAddition
+    InteractionBuilder --> ActionIdManager
+    MetadataAddition --> MetadataHandler & MessageSending
+    UserAction --> ActionDetection
+    ActionDetection --> ActionHandler
+    ActionHandler --> MetadataExtraction & ActionProcessing & TemplateEngine
+    MetadataExtraction --> MetadataHandler
+    ActionProcessing --> SnowflakeStorage & Response
+    SnowflakeStorage --> SnowflakeConnector
 ```
-
-    2

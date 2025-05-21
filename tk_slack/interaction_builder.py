@@ -19,6 +19,8 @@ import json, re, os
 from datetime import datetime
 import pytz
 import time
+import random
+import uuid
 
 # %% ../nbs/API/03_interection_builder.ipynb 6
 class SnowflakeConnector:
@@ -63,7 +65,7 @@ def _get_connection(self):
         )
     return self._conn
 
-# %% ../nbs/API/03_interection_builder.ipynb 12
+# %% ../nbs/API/03_interection_builder.ipynb 10
 @patch_to(SnowflakeConnector)
 def close(self):
         """Close the Snowflake connection if open."""
@@ -71,7 +73,7 @@ def close(self):
             self._conn.close()
             self._conn = None
 
-# %% ../nbs/API/03_interection_builder.ipynb 15
+# %% ../nbs/API/03_interection_builder.ipynb 12
 @patch_to(SnowflakeConnector)
 def execute_query(self, query: str, params: Optional[List[Any]] = None) -> List[Dict[str, Any]]:
     """Execute a query and return results as a list of dictionaries.
@@ -107,7 +109,7 @@ def execute_query(self, query: str, params: Optional[List[Any]] = None) -> List[
         print(f"Error executing query: {e}")
         raise
 
-# %% ../nbs/API/03_interection_builder.ipynb 19
+# %% ../nbs/API/03_interection_builder.ipynb 14
 @patch_to(SnowflakeConnector)
 def _get_table_schema(self, table_name: str, use_cache: bool = True) -> Dict[str, str]:
     """
@@ -396,7 +398,7 @@ def insert_record(self, table_name: str, data: Dict[str, Any], **kwargs) -> Any:
     
     return True
 
-# %% ../nbs/API/03_interection_builder.ipynb 23
+# %% ../nbs/API/03_interection_builder.ipynb 16
 @patch_to(SnowflakeConnector)
 def bulk_insert(self, table_name: str, df: pd.DataFrame, **kwargs) -> bool:
     """
@@ -601,7 +603,7 @@ def _prepare_dataframe(
         
     return result_df
 
-# %% ../nbs/API/03_interection_builder.ipynb 25
+# %% ../nbs/API/03_interection_builder.ipynb 17
 @patch_to(SnowflakeConnector)    
 def get_user_interactions(self, user_id: str, limit: int = 100) -> List[Dict[str, Any]]:
     """Get recent interactions for a specific user.
@@ -667,7 +669,7 @@ def __del__(self):
     """Ensure connection is closed when object is destroyed."""
     self.close()
 
-# %% ../nbs/API/03_interection_builder.ipynb 27
+# %% ../nbs/API/03_interection_builder.ipynb 19
 class ActionHandler:
     """
     Handles Slack interactive actions, including acknowledgment, response, 
@@ -755,7 +757,7 @@ class ActionHandler:
             
         return payload
 
-# %% ../nbs/API/03_interection_builder.ipynb 29
+# %% ../nbs/API/03_interection_builder.ipynb 21
 @patch_to(ActionHandler)
 def _format_response_text(self, template: str, action_data: Dict[str, Any]) -> str:
     """Format response text by replacing placeholders.
@@ -809,7 +811,7 @@ def _format_response_text(self, template: str, action_data: Dict[str, Any]) -> s
         result = result.replace("{texts}", texts_str)    
     return result
 
-# %% ../nbs/API/03_interection_builder.ipynb 30
+# %% ../nbs/API/03_interection_builder.ipynb 22
 @patch_to(ActionHandler)
 def _send_response(self, action_data: Dict[str, Any], respond):
     """Send an appropriate response based on the action data.
@@ -856,7 +858,7 @@ def _send_response(self, action_data: Dict[str, Any], respond):
         # Can't respond
         print(f"No valid way to respond. Respond: {respond}")
 
-# %% ../nbs/API/03_interection_builder.ipynb 32
+# %% ../nbs/API/03_interection_builder.ipynb 24
 @patch_to(ActionHandler)
 def _store_action_in_snowflake(self, action_data: Dict[str, Any], 
                                 view_info: Dict[str, Any],
@@ -904,7 +906,7 @@ def _store_action_in_snowflake(self, action_data: Dict[str, Any],
     except Exception as e:
         print(f"Error storing action in Snowflake: {e}")
 
-# %% ../nbs/API/03_interection_builder.ipynb 35
+# %% ../nbs/API/03_interection_builder.ipynb 27
 class ActionIdManager:
     """
     Manages action IDs for Slack interactive elements to ensure uniqueness
@@ -1059,7 +1061,7 @@ class ActionIdManager:
                             
         return metadata
 
-# %% ../nbs/API/03_interection_builder.ipynb 37
+# %% ../nbs/API/03_interection_builder.ipynb 29
 @patch_to(ActionHandler,cls_method=True)
 def setup_slack_action_handler(self,app, snowflake_connector):
     """Set up a single Slack action handler with the Bolt app.
@@ -1128,7 +1130,7 @@ def setup_slack_action_handler(self,app, snowflake_connector):
     
     return handler
 
-# %% ../nbs/API/03_interection_builder.ipynb 39
+# %% ../nbs/API/03_interection_builder.ipynb 31
 @patch_to(ActionHandler)
 def process_action(self, body: Dict[str, Any], respond: Callable, 
                     components: Optional[Dict[str, Any]] = None):
@@ -1168,14 +1170,14 @@ def process_action(self, body: Dict[str, Any], respond: Callable,
     
     return action_data
 
-# %% ../nbs/API/03_interection_builder.ipynb 41
+# %% ../nbs/API/03_interection_builder.ipynb 33
 class InteractionBuilder:
     """
     Utility class for creating interactive Slack Block Kit elements.
     """
     pass
 
-# %% ../nbs/API/03_interection_builder.ipynb 43
+# %% ../nbs/API/03_interection_builder.ipynb 35
 @patch_to(InteractionBuilder,cls_method=True)
 def create_button(self, text: str, action_id: str, url: Optional[str] = None, 
                     value: Optional[str] = None, style: Optional[str] = None) -> Dict[str, Any]:
@@ -1212,7 +1214,7 @@ def create_button(self, text: str, action_id: str, url: Optional[str] = None,
         
     return button
 
-# %% ../nbs/API/03_interection_builder.ipynb 46
+# %% ../nbs/API/03_interection_builder.ipynb 38
 @patch_to(InteractionBuilder,cls_method=True)
 def create_actions_block(self, elements: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Create an actions block for Slack messages.
@@ -1225,7 +1227,7 @@ def create_actions_block(self, elements: List[Dict[str, Any]]) -> Dict[str, Any]
     """
     return {"type": "actions","elements": elements}
 
-# %% ../nbs/API/03_interection_builder.ipynb 48
+# %% ../nbs/API/03_interection_builder.ipynb 40
 @patch_to(InteractionBuilder,cls_method=True)
 def create_datepicker(self, action_id: str, placeholder: str, 
                          initial_date: Optional[str] = None) -> Dict[str, Any]:
@@ -1254,7 +1256,7 @@ def create_datepicker(self, action_id: str, placeholder: str,
             
         return datepicker
 
-# %% ../nbs/API/03_interection_builder.ipynb 50
+# %% ../nbs/API/03_interection_builder.ipynb 42
 @patch_to(InteractionBuilder,cls_method=True)
 def create_static_select(self, action_id: str, placeholder: str, 
                         options: List[Tuple[str, str]]) -> Dict[str, Any]:
@@ -1291,7 +1293,7 @@ def create_static_select(self, action_id: str, placeholder: str,
     
     return select
 
-# %% ../nbs/API/03_interection_builder.ipynb 52
+# %% ../nbs/API/03_interection_builder.ipynb 44
 @patch_to(InteractionBuilder,cls_method=True)
 def create_multi_select(self, action_id: str, placeholder: str, 
                         options: List[Tuple[str, str]]) -> Dict[str, Any]:
@@ -1328,7 +1330,7 @@ def create_multi_select(self, action_id: str, placeholder: str,
     
     return multi_select
 
-# %% ../nbs/API/03_interection_builder.ipynb 54
+# %% ../nbs/API/03_interection_builder.ipynb 46
 @patch_to(InteractionBuilder,cls_method=True)
 def create_users_select(self, action_id: str, placeholder: str) -> Dict[str, Any]:
         """Create a user select element.
@@ -1350,7 +1352,7 @@ def create_users_select(self, action_id: str, placeholder: str) -> Dict[str, Any
             }
         }
 
-# %% ../nbs/API/03_interection_builder.ipynb 56
+# %% ../nbs/API/03_interection_builder.ipynb 48
 @patch_to(InteractionBuilder,cls_method=True)
 def create_channels_select(self, action_id: str, placeholder: str) -> Dict[str, Any]:
     """Create a channel select element.
@@ -1372,7 +1374,7 @@ def create_channels_select(self, action_id: str, placeholder: str) -> Dict[str, 
         }
     }
 
-# %% ../nbs/API/03_interection_builder.ipynb 58
+# %% ../nbs/API/03_interection_builder.ipynb 50
 @patch_to(InteractionBuilder,cls_method=True)
 def detect_and_create_interactive_elements(
         self,
