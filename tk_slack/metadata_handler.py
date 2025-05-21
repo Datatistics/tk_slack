@@ -9,7 +9,7 @@ from fastcore.test import *
 import json
 from typing import Dict, Any, Optional, List
 
-# %% ../nbs/API/06_metadata_handler.ipynb 4
+# %% ../nbs/API/06_metadata_handler.ipynb 5
 class MessageMetadataHandler:
     """
     Handles the creation and attachment of metadata to Slack messages.
@@ -21,7 +21,7 @@ class MessageMetadataHandler:
     """
     pass
 
-# %% ../nbs/API/06_metadata_handler.ipynb 5
+# %% ../nbs/API/06_metadata_handler.ipynb 6
 @patch_to(MessageMetadataHandler,cls_method=True)
 def create_metadata(
         self,
@@ -34,7 +34,7 @@ def create_metadata(
     
     Args:
         event_type: Type of event (e.g., 'lead_alert', 'data_notification')
-        view_info: Optional information about the view that generated this message
+        view_info: Optional information about the Snowflake view that generated this message
         response_config: Optional configuration for how to respond to user actions
         custom_data: Optional additional custom data to include
         
@@ -75,7 +75,7 @@ def create_metadata(
     return metadata
     
 
-# %% ../nbs/API/06_metadata_handler.ipynb 6
+# %% ../nbs/API/06_metadata_handler.ipynb 7
 @patch_to(MessageMetadataHandler,cls_method=True)
 def add_metadata_to_message(
     self,
@@ -109,7 +109,7 @@ def add_metadata_to_message(
     return message_with_metadata
 
 
-# %% ../nbs/API/06_metadata_handler.ipynb 7
+# %% ../nbs/API/06_metadata_handler.ipynb 8
 @patch_to(MessageMetadataHandler,cls_method=True)
 def extract_metadata_from_message(self, message: Dict[str, Any]) -> Dict[str, Any]:
     """Extract metadata from a Slack message.
@@ -125,7 +125,7 @@ def extract_metadata_from_message(self, message: Dict[str, Any]) -> Dict[str, An
         
     return message["metadata"]
 
-# %% ../nbs/API/06_metadata_handler.ipynb 8
+# %% ../nbs/API/06_metadata_handler.ipynb 9
 @patch_to(MessageMetadataHandler,cls_method=True)
 def get_event_payload(self, message: Dict[str, Any]) -> Dict[str, Any]:
     """Get the event payload from a message's metadata.

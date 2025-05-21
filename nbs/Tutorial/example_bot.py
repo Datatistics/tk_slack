@@ -6,7 +6,8 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 from dotenv import load_dotenv
 import pandas as pd
 
-from tk_slack.interaction_builder import ActionHandler, SnowflakeConnector
+
+from tk_slack.slack_actions import ActionHandler
 from tk_slack.message_templates import MessageTemplate
 
 # Load environment variables
@@ -14,12 +15,7 @@ load_dotenv()
 
 # Initialize the Slack app
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
-
-# Initialize Snowflake connector
-snowflake = SnowflakeConnector()
-
-# Set up the action handler - this registers a universal handler for all interactive elements
-handler = ActionHandler.setup_slack_action_handler(app, snowflake)
+action_handler = ActionHandler.setup_slack_action_handler(app)
 
 # Example event handlers
 @app.event("app_mention")
