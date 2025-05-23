@@ -243,7 +243,7 @@ def _prepare_values_and_expressions(
     filtered_data: Dict, 
     columns: List[str], 
     db_schema: Dict
-) -> Tuple[List, List[str]]:
+    ) -> Tuple[List, List[str]]:
     """Prepare values and SQL expressions for the query."""
     values = []
     select_exprs = []
@@ -342,7 +342,7 @@ def _execute_insert_query(
     query: str,
     values: List,
     debug: bool = False
-) -> bool:
+    ) -> bool:
     """Execute the INSERT query on Snowflake."""
     try:
         if debug:

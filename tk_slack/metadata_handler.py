@@ -29,7 +29,7 @@ def create_metadata(
         view_info: Optional[Dict[str, Any]] = None,
         response_config: Optional[Dict[str, Any]] = None,
         custom_data: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        ) -> Dict[str, Any]:
     """Create structured metadata for a Slack message.
     
     Args:
@@ -45,11 +45,7 @@ def create_metadata(
     event_payload = {}
     
     # Add view information if provided
-    if view_info:
-        event_payload.update({
-            "view_name": view_info.get("view", "unknown"),
-            "view_group": view_info.get("view_group", "unknown")
-        })
+    if view_info: event_payload.update(view_info)
         
     # Add response configuration if provided
     if response_config:
@@ -84,7 +80,7 @@ def add_metadata_to_message(
     view_info: Optional[Dict[str, Any]] = None,
     response_config: Optional[Dict[str, Any]] = None,
     custom_data: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+    ) -> Dict[str, Any]:
     """Add metadata to a Slack message payload.
     
     Args:

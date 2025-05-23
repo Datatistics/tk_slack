@@ -240,7 +240,7 @@ def template_f2(
     view_group: str,
     message_text: str,
     channel_id: str,
-    view_config: Dict[str, Any],
+    view_config: Dict[str, Any] = None,
     send_to_slack_func: Callable = None,
     log_alert_history_func: Callable = None,
 ) -> Tuple[bool, Optional[Dict[str, Any]]]:
@@ -275,24 +275,18 @@ def template_f2(
     for idx, row in df.iterrows():
         # Get row-specific config or fallback to view_config
         config = TemplateEngine._parse_row_config(row, view_config, col_map)
-        
-        # Create metadata for this row's message
-        view_info = {
-            "view": view,
-            "view_group": view_group
-        }
-        
+        config['view'] = view
+        config['view_group'] = view_group
+
         # Extract response configuration from config
         response_config = {
             "response_type": config.get("response_type", "ephemeral"),
             "response_message": config.get("response_message", "Thank you for your response!"),
             "replace_original": config.get("replace_original", False)
-        }
+            }
         
         # Build message blocks for this row
-        payload_blocks = TemplateEngine.build_individual_message_blocks(
-            row, df_columns, col_map, config, view_info
-        )
+        payload_blocks = TemplateEngine.build_individual_message_blocks(row, df_columns, col_map, config)
         
         # Message text can be customized per row or use the default
         row_message_col = col_map.get('MESSAGE_TEXT')
@@ -310,7 +304,7 @@ def template_f2(
         message_with_metadata = MessageMetadataHandler.add_metadata_to_message(
             message_payload,
             event_type=f"{view}_notification",
-            view_info=view_info,
+            view_info=config,
             response_config=response_config,
             custom_data=custom_data
         )

@@ -106,17 +106,24 @@ def _parse_row_config(self,row: pd.Series, view_config: Dict[str, Any],
         config = view_config.copy()
         
         # Check for row-specific config
-        if 'CONFIG' in col_map and pd.notna(row[col_map['CONFIG']]):
+        if 'ROW_CONFIG' in col_map and pd.notna(row[col_map['ROW_CONFIG']]):
             try:
-                row_config = row[col_map['CONFIG']]
-                if not isinstance(row_config, dict):
-                    row_config = json.loads(row_config)
-                # Merge with view_config, with row_config taking precedence
+                row_config = row[col_map['ROW_CONFIG']]
+                if not isinstance(row_config, dict):    row_config = json.loads(row_config)
                 config.update(row_config)
+                return config
             except (json.JSONDecodeError, TypeError):
                 DebugLogger.log(f"Error parsing row config. Using view_config.")
         
-        return config
+        if 'CONFIG' in col_map and pd.notna(row[col_map['CONFIG']]):
+            try:
+                row_config = row[col_map['CONFIG']]
+                if not isinstance(row_config, dict): row_config = json.loads(row_config)
+                # Merge with view_config, with row_config taking precedence
+                config.update(row_config)
+                return config
+            except (json.JSONDecodeError, TypeError):
+                DebugLogger.log(f"Error parsing row config. Using view_config.")
 
 # %% ../nbs/API/04_template_engine.ipynb 7
 @patch_to(TemplateEngine,cls_method=True)
@@ -268,9 +275,11 @@ def _extract_response_metadata(self,row: pd.Series, col_map: Dict[str, str],
 
 # %% ../nbs/API/04_template_engine.ipynb 10
 @patch_to(TemplateEngine,cls_method=True)
-def build_individual_message_blocks(cls, row: pd.Series, df_columns: List[str], 
-                                    col_map: Dict[str, str], config: Dict[str, Any],
-                                    view_info: Dict[str, Any]) -> List[Dict[str, Any]]:
+def build_individual_message_blocks(cls, 
+                                    row: pd.Series, 
+                                    df_columns: List[str], 
+                                    col_map: Dict[str, str], 
+                                    config: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Build message blocks for a single row.
     
     Args:
@@ -278,7 +287,6 @@ def build_individual_message_blocks(cls, row: pd.Series, df_columns: List[str],
         df_columns: DataFrame column names
         col_map: Column name mapping
         config: Configuration dictionary
-        view_info: View information for structured metadata
         
     Returns:
         List of Slack blocks for the message
