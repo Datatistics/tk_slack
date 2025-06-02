@@ -396,7 +396,7 @@ def insert_record(self, table_name: str, data: Dict[str, Any], **kwargs) -> Any:
     
     # Get table schema
     db_schema = self._get_table_schema(table_name)
-    
+    print('db_schema', db_schema, 'sc')
     if not db_schema:
         raise ValueError(f"Could not retrieve schema for {options['database']}.{options['schema']}.{table_name}")
         
