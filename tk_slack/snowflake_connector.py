@@ -54,7 +54,7 @@ class SnowflakeConnector:
 @patch_to(SnowflakeConnector, cls_method=True)
 def _get_connection(self):
     """Get a Snowflake connection, creating one if needed."""
-    if not hasattr(self, '_conn'):
+    if not hasattr(self, '_conn') or self._conn is None:
         self._conn = snowflake.connector.connect(
             **self.connection_params
         )
