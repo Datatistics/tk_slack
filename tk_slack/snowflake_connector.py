@@ -4,7 +4,7 @@
 __all__ = ['SnowflakeConnector']
 
 # %% ../nbs/API/07_snowflake_connector.ipynb 3
-from fastcore.basics import patch_to
+from fastcore.basics import patch
 from fastcore.test import *
 
 from typing import List, Tuple, Dict, Any, Callable, Optional
@@ -51,8 +51,8 @@ class SnowflakeConnector:
         self.schema = self.connection_params['schema']  
 
 # %% ../nbs/API/07_snowflake_connector.ipynb 8
-@patch_to(SnowflakeConnector, cls_method=True)
-def _get_connection(self):
+@patch
+def _get_connection(self: SnowflakeConnector):
     """Get a Snowflake connection, creating one if needed."""
     if not hasattr(self, '_conn') or self._conn is None:
         self._conn = snowflake.connector.connect(
@@ -61,16 +61,16 @@ def _get_connection(self):
     return self._conn
 
 # %% ../nbs/API/07_snowflake_connector.ipynb 10
-@patch_to(SnowflakeConnector, cls_method=True)
-def close(self):
+@patch
+def close(self: SnowflakeConnector):
         """Close the Snowflake connection if open."""
         if self._conn:
             self._conn.close()
             self._conn = None
 
 # %% ../nbs/API/07_snowflake_connector.ipynb 12
-@patch_to(SnowflakeConnector, cls_method=True)
-def execute_query(self, query: str, params: Optional[List[Any]] = None) -> List[Dict[str, Any]]:
+@patch
+def execute_query(self: SnowflakeConnector, query: str, params: Optional[List[Any]] = None) -> List[Dict[str, Any]]:
     """Execute a query and return results as a list of dictionaries.
     
     Args:
@@ -105,8 +105,8 @@ def execute_query(self, query: str, params: Optional[List[Any]] = None) -> List[
         raise
 
 # %% ../nbs/API/07_snowflake_connector.ipynb 14
-@patch_to(SnowflakeConnector, cls_method=True)
-def _get_table_schema(self, table_name: str, use_cache: bool = True) -> Dict[str, str]:
+@patch
+def _get_table_schema(self: SnowflakeConnector, table_name: str, use_cache: bool = True) -> Dict[str, str]:
     """
     Query Snowflake to get the schema of a table.
     
@@ -157,21 +157,21 @@ def _get_table_schema(self, table_name: str, use_cache: bool = True) -> Dict[str
         raise RuntimeError(f"Failed to get schema for {table_name}: {str(e)}")
 
 
-@patch_to(SnowflakeConnector, cls_method=True)
-def _get_current_timestamp(self, timezone: str = 'America/Chicago') -> str:
+@patch
+def _get_current_timestamp(self: SnowflakeConnector, timezone: str = 'America/Chicago') -> str:
     """Get current timestamp in the specified timezone."""
     tz = pytz.timezone(timezone)
     return datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
 
-@patch_to(SnowflakeConnector, cls_method=True)
-def _create_schema_mapping(self, db_schema: Dict) -> Dict[str, str]:
+@patch
+def _create_schema_mapping(self: SnowflakeConnector, db_schema: Dict) -> Dict[str, str]:
     """Create a case-insensitive mapping of schema columns."""
     return {k.upper(): k for k in db_schema.keys()}
 
 
-@patch_to(SnowflakeConnector, cls_method=True)
+@patch
 def _prepare_insert_data(
-        self,
+        self: SnowflakeConnector,
         insert_data: Dict, 
         db_schema: Dict,
         schema_keys_map: Dict[str, str],
@@ -227,8 +227,8 @@ def _prepare_insert_data(
     return filtered_data
 
 
-@patch_to(SnowflakeConnector, cls_method=True)
-def _build_insert_query(self, table_name: str, columns: List[str]) -> str:
+@patch
+def _build_insert_query(self: SnowflakeConnector, table_name: str, columns: List[str]) -> str:
     """Build the base INSERT query for Snowflake."""
     return f"""
         INSERT INTO {self.database}.{self.schema}.{table_name} (
@@ -237,9 +237,9 @@ def _build_insert_query(self, table_name: str, columns: List[str]) -> str:
         SELECT
     """
 
-@patch_to(SnowflakeConnector, cls_method=True)
+@patch
 def _prepare_values_and_expressions(
-    self,
+    self: SnowflakeConnector,
     filtered_data: Dict, 
     columns: List[str], 
     db_schema: Dict
@@ -294,8 +294,8 @@ def _prepare_values_and_expressions(
     return values, select_exprs
 
 # Additional helper method to validate JSON data before insertion
-@patch_to(SnowflakeConnector, cls_method=True)
-def _validate_json_data(self, data: Dict[str, Any], db_schema: Dict) -> Dict[str, Any]:
+@patch
+def _validate_json_data(self: SnowflakeConnector, data: Dict[str, Any], db_schema: Dict) -> Dict[str, Any]:
     """
     Validate and convert JSON data types before insertion.
     
@@ -334,9 +334,9 @@ def _validate_json_data(self, data: Dict[str, Any], db_schema: Dict) -> Dict[str
     
     return validated_data
 
-@patch_to(SnowflakeConnector, cls_method=True)
+@patch
 def _execute_insert_query(
-    self,
+    self: SnowflakeConnector,
     database: str,
     schema: str,
     query: str,
@@ -365,8 +365,8 @@ def _execute_insert_query(
         raise RuntimeError(f"Failed to insert data: {str(e)}")
 
 
-@patch_to(SnowflakeConnector, cls_method=True)
-def insert_record(self, table_name: str, data: Dict[str, Any], **kwargs) -> Any:
+@patch
+def insert_record(self: SnowflakeConnector, table_name: str, data: Dict[str, Any], **kwargs) -> Any:
     """
     Enhanced function to insert data into Snowflake with improved type handling.
     
@@ -447,8 +447,8 @@ def insert_record(self, table_name: str, data: Dict[str, Any], **kwargs) -> Any:
     return True
 
 # %% ../nbs/API/07_snowflake_connector.ipynb 16
-@patch_to(SnowflakeConnector, cls_method=True)
-def bulk_insert(self, table_name: str, df: pd.DataFrame, **kwargs) -> bool:
+@patch
+def bulk_insert(self: SnowflakeConnector, table_name: str, df: pd.DataFrame, **kwargs) -> bool:
     """
     Enhanced function to bulk insert DataFrame data into Snowflake with improved type handling.
     
@@ -566,9 +566,9 @@ def bulk_insert(self, table_name: str, df: pd.DataFrame, **kwargs) -> bool:
         raise RuntimeError(f"Failed to bulk insert data: {str(e)}")
 
 
-@patch_to(SnowflakeConnector, cls_method=True)
+@patch
 def _prepare_dataframe(
-        self,
+        self: SnowflakeConnector,
         df: pd.DataFrame,
         db_schema: Dict,
         schema_keys_map: Dict[str, str],
@@ -665,8 +665,8 @@ def _prepare_dataframe(
     return result_df
 
 # %% ../nbs/API/07_snowflake_connector.ipynb 17
-@patch_to(SnowflakeConnector, cls_method=True)    
-def get_user_interactions(self, user_id: str, limit: int = 100) -> List[Dict[str, Any]]:
+@patch    
+def get_user_interactions(self: SnowflakeConnector, user_id: str, limit: int = 100) -> List[Dict[str, Any]]:
     """Get recent interactions for a specific user.
     
     Args:
@@ -685,8 +685,8 @@ def get_user_interactions(self, user_id: str, limit: int = 100) -> List[Dict[str
     """
     return self.execute_query(query, [user_id])
 
-@patch_to(SnowflakeConnector, cls_method=True)
-def get_interactions_by_view(self, view: str, limit: int = 100) -> List[Dict[str, Any]]:
+@patch
+def get_interactions_by_view(self: SnowflakeConnector, view: str, limit: int = 100) -> List[Dict[str, Any]]:
     """Get recent interactions for a specific view.
     
     Args:
@@ -705,8 +705,8 @@ def get_interactions_by_view(self, view: str, limit: int = 100) -> List[Dict[str
     """
     return self.execute_query(query, [view])
 
-@patch_to(SnowflakeConnector, cls_method=True)
-def get_interaction_summary(self) -> List[Dict[str, Any]]:
+@patch
+def get_interaction_summary(self: SnowflakeConnector) -> List[Dict[str, Any]]:
     """Get a summary of interactions by view and action type.
     
     Returns:
@@ -726,6 +726,7 @@ def get_interaction_summary(self) -> List[Dict[str, Any]]:
     """
     return self.execute_query(query)
 
-def __del__(self):
+@patch
+def __del__(self: SnowflakeConnector):
     """Ensure connection is closed when object is destroyed."""
     self.close()
